@@ -727,3 +727,174 @@ initVantagensGallery();
     });
   });
 })();
+
+/* ==========================================================================
+   05 · PLANO ÚNICO: Interações Geométricas Fluidas (jQuery)
+   - Métricas interativas com revelação de descrição após interação
+   - Matriz de garantias inteligente com cascata geométrica e contador
+   ========================================================================== */
+(function initPlanSingleJQuery() {
+  const jq = window.jQuery;
+  if (!jq) return;
+
+  // Curva de easing geométrica fluida (cubic-bezier aproximada)
+  jq.easing.geoOut = function (x) {
+    return 1 - Math.pow(1 - x, 3.6);
+  };
+
+  const refreshScroll = () => {
+    if (typeof ScrollTrigger !== 'undefined') {
+      ScrollTrigger.refresh();
+    }
+    if (lenis && typeof lenis.resize === 'function') {
+      lenis.resize();
+    }
+  };
+
+  const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const dur = (ms) => (reduceMotion ? 0 : ms);
+
+  /* ---------- 1. Métricas Interativas (descrição aparece após interação) ---------- */
+  const $metrics = jq('[data-metric-item]');
+
+  function openMetric($item, pin = false) {
+    const $drawer = $item.find('.plan-metric-drawer');
+    const $beam = $item.find('.plan-metric-beam i');
+    const $prompt = $item.find('[data-metric-prompt]');
+
+    if (pin) $item.attr('data-pinned', 'true');
+    $item.addClass('is-active').attr('aria-expanded', 'true');
+    $prompt.text('[ − Ocultar detalhes ]');
+
+    $beam.stop(true, false).css('width', '0%').animate({ width: '100%' }, dur(460), 'geoOut');
+    $drawer.stop(true, false).slideDown({
+      duration: dur(340),
+      easing: 'geoOut',
+      complete: refreshScroll
+    });
+  }
+
+  function closeMetric($item) {
+    const $drawer = $item.find('.plan-metric-drawer');
+    const $beam = $item.find('.plan-metric-beam i');
+    const $prompt = $item.find('[data-metric-prompt]');
+
+    $item.removeAttr('data-pinned').removeClass('is-active').attr('aria-expanded', 'false');
+    $prompt.text('[ + Ver como funciona ]');
+
+    $beam.stop(true, false).animate({ width: '0%' }, dur(240), 'geoOut');
+    $drawer.stop(true, false).slideUp({
+      duration: dur(260),
+      easing: 'geoOut',
+      complete: refreshScroll
+    });
+  }
+
+  $metrics.on('click', function (e) {
+    e.preventDefault();
+    const $item = jq(this);
+    const isExpanded = $item.attr('aria-expanded') === 'true';
+    const isPinned = $item.attr('data-pinned') === 'true';
+
+    if (isExpanded && (isPinned || !canHover())) {
+      closeMetric($item);
+    } else {
+      openMetric($item, true);
+    }
+  });
+
+  $metrics.on('mouseenter', function () {
+    if (!canHover()) return;
+    const $item = jq(this);
+    if ($item.attr('aria-expanded') !== 'true') {
+      openMetric($item, false);
+    }
+  });
+
+  $metrics.on('mouseleave', function () {
+    if (!canHover()) return;
+    const $item = jq(this);
+    if ($item.attr('data-pinned') !== 'true') {
+      closeMetric($item);
+    }
+  });
+
+  $metrics.on('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      jq(this).trigger('click');
+    }
+  });
+
+  /* ---------- 2. Matriz Inteligente de Garantias (plan-single-features) ---------- */
+  const $featItems = jq('[data-feat-item]');
+  const $featCount = jq('[data-feat-count]');
+  const $toggleAllBtn = jq('[data-feat-toggle-all]');
+
+  function updateFeatMeta() {
+    const activeCount = $featItems.filter('.is-active').length;
+    const total = $featItems.length;
+    $featCount.text(String(activeCount).padStart(2, '0'));
+
+    if (activeCount === total) {
+      $toggleAllBtn.text('[ − Recolher todas ]').addClass('is-all-open');
+    } else {
+      $toggleAllBtn.text('[ + Expandir todas ]').removeClass('is-all-open');
+    }
+  }
+
+  function setFeatState($item, open) {
+    const $drawer = $item.find('.plan-feat-drawer');
+    const $line = $item.find('.plan-feat-line i');
+
+    if (open) {
+      $item.addClass('is-active').attr('aria-expanded', 'true');
+      $line.stop(true, false).css('width', '0%').animate({ width: '100%' }, dur(420), 'geoOut');
+      $drawer.stop(true, false).slideDown({
+        duration: dur(320),
+        easing: 'geoOut',
+        complete: refreshScroll
+      });
+    } else {
+      $item.removeClass('is-active').attr('aria-expanded', 'false');
+      $line.stop(true, false).animate({ width: '0%' }, dur(240), 'geoOut');
+      $drawer.stop(true, false).slideUp({
+        duration: dur(250),
+        easing: 'geoOut',
+        complete: refreshScroll
+      });
+    }
+    updateFeatMeta();
+  }
+
+  // Inicializa a linha do primeiro item ativo
+  $featItems.filter('.is-active').find('.plan-feat-line i').css('width', '100%');
+  updateFeatMeta();
+
+  $featItems.on('click', function (e) {
+    e.preventDefault();
+    const $item = jq(this);
+    const isOpen = $item.hasClass('is-active');
+    setFeatState($item, !isOpen);
+  });
+
+  $featItems.on('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      jq(this).trigger('click');
+    }
+  });
+
+  $toggleAllBtn.on('click', function (e) {
+    e.preventDefault();
+    const allOpen = $featItems.filter('.is-active').length === $featItems.length;
+    const targetState = !allOpen;
+
+    $featItems.each(function (idx) {
+      const $item = jq(this);
+      setTimeout(() => {
+        setFeatState($item, targetState);
+      }, reduceMotion ? 0 : idx * 50);
+    });
+  });
+})();
